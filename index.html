@@ -193,6 +193,14 @@
     font-size:14px; opacity:0; transition:opacity .2s;
   }
   .frame:hover .dl-btn{ opacity:1; }
+  .frame .del-btn{
+    position:absolute; top:6px; right:6px;
+    width:26px; height:26px; border-radius:50%;
+    background:rgba(110,42,42,.85); border:1px solid #e0796f;
+    color:#ffd9d4; display:flex; align-items:center; justify-content:center;
+    font-size:13px; opacity:0; transition:opacity .2s;
+  }
+  .frame:hover .del-btn{ opacity:1; }
 
   .guest-upload{
     border:1px solid rgba(201,162,39,.3);
@@ -346,6 +354,7 @@
       <img id="modal-img" src="">
       <div class="modal-actions">
         <button class="btn-gold" id="modal-dl">⬇️ Télécharger cette photo</button>
+        <button class="btn-ghost" id="modal-del" style="border-color:#e0796f; color:#ffbdb5;">🗑️ Supprimer</button>
         <button class="btn-ghost" onclick="closeModal()">Fermer</button>
       </div>
     </div>
@@ -355,6 +364,7 @@
 // --- Etat (démo : les photos vivent en mémoire le temps de la session) ---
 let photos = []; // {id, name, url, source:'mariee'|'invite', author}
 let currentFilter = 'all';
+let isAdmin = false;
 const ADMIN_PASSWORD = "anneau";
 
 function showView(name){
@@ -371,10 +381,12 @@ function showView(name){
 function checkGate(){
   const val = document.getElementById('gate-pass').value;
   if(val === ADMIN_PASSWORD){
+    isAdmin = true;
     document.getElementById('admin-nav').textContent = '⚒️ Ouvrir la Forge';
     document.getElementById('admin-nav').onclick = ()=>showView('admin');
     document.getElementById('gallery-actions').style.display = 'flex';
     showView('admin');
+    renderGallery();
   } else {
     document.getElementById('gate-error').textContent = 'Ce mot de passe n\'ouvre pas la Porte...';
   }
@@ -448,6 +460,7 @@ function renderGallery(){
     <div class="frame" onclick="openModal('${p.id}')">
       <img src="${p.url}" loading="lazy">
       <div class="badge ${p.source==='mariee'?'mariee':''}">${p.source==='mariee' ? '📸 La Mariée' : '🍻 ' + escapeHtml(p.author||'Invité')}</div>
+      <div class="del-btn" onclick="event.stopPropagation(); deletePhoto('${p.id}')">🗑</div>
       <div class="dl-btn" onclick="event.stopPropagation(); downloadOne('${p.id}')">⬇</div>
     </div>
   `).join('');
