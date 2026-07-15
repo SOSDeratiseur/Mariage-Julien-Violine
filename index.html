@@ -367,7 +367,7 @@ const SUPABASE_URL = "https://eckewdcwbktiaopgivsd.supabase.co";
 const SUPABASE_ANON_KEY = "sb_publishable_uus454j_UqeJiDCQUs8kSA_uRxS9cxX";
 const BUCKET = "photos";
 
-const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+const supabaseClient = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 let photos = []; // {path, name, publicUrl, source:'mariee'|'invite', author}
 let currentFilter = 'all';
@@ -415,7 +415,7 @@ function parseStoragePath(path){
 
 async function loadPhotos(){
   try{
-    const { data, error } = await supabase.storage.from(BUCKET).list('', { limit: 500, sortBy:{column:'created_at', order:'desc'} });
+    const { data, error } = await supabaseClient.storage.from(BUCKET).list('', { limit: 500, sortBy:{column:'created_at', order:'desc'} });
     if(error){
       console.error(error);
       alert("Impossible de charger la galerie : " + error.message);
@@ -425,7 +425,7 @@ async function loadPhotos(){
       .filter(f => f.name && !f.name.endsWith('/'))
       .map(f=>{
         const meta = parseStoragePath(f.name);
-        const { data: pub } = supabase.storage.from(BUCKET).getPublicUrl(f.name);
+        const { data: pub } = supabaseClient.storage.from(BUCKET).getPublicUrl(f.name);
         return { path: f.name, name: meta.name, source: meta.source, author: meta.author, publicUrl: pub.publicUrl };
       });
     renderGallery();
@@ -482,7 +482,7 @@ async function handleFiles(fileList, source, author){
       }
       // photos de la mariée : envoyées telles quelles, pleine qualité
       const path = buildStoragePath(file, source, author);
-      const { error } = await supabase.storage.from(BUCKET).upload(path, file, { upsert:false });
+      const { error } = await supabaseClient.storage.from(BUCKET).upload(path, file, { upsert:false });
       if(error){ alert("Erreur d'envoi pour " + file.name + " : " + error.message); }
     } catch(err){
       alert("Erreur inattendue pour " + file.name + " : " + (err && err.message ? err.message : err));
@@ -580,7 +580,7 @@ async function deletePhoto(path){
   }
 
   if(!confirm("Supprimer définitivement cette photo ?")) return;
-  const { error } = await supabase.storage.from(BUCKET).remove([path]);
+  const { error } = await supabaseClient.storage.from(BUCKET).remove([path]);
   if(error){ alert("Erreur lors de la suppression : " + error.message); return; }
   photos = photos.filter(x=>x.path!==path);
   renderGallery();
