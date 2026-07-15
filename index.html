@@ -414,19 +414,25 @@ function parseStoragePath(path){
 }
 
 async function loadPhotos(){
-  const { data, error } = await supabase.storage.from(BUCKET).list('', { limit: 500, sortBy:{column:'created_at', order:'desc'} });
-  if(error){
-    console.error(error);
-    return;
+  try{
+    const { data, error } = await supabase.storage.from(BUCKET).list('', { limit: 500, sortBy:{column:'created_at', order:'desc'} });
+    if(error){
+      console.error(error);
+      alert("Impossible de charger la galerie : " + error.message);
+      return;
+    }
+    photos = (data||[])
+      .filter(f => f.name && !f.name.endsWith('/'))
+      .map(f=>{
+        const meta = parseStoragePath(f.name);
+        const { data: pub } = supabase.storage.from(BUCKET).getPublicUrl(f.name);
+        return { path: f.name, name: meta.name, source: meta.source, author: meta.author, publicUrl: pub.publicUrl };
+      });
+    renderGallery();
+  } catch(err){
+    console.error(err);
+    alert("Erreur inattendue au chargement de la galerie : " + (err && err.message ? err.message : err));
   }
-  photos = (data||[])
-    .filter(f => f.name && !f.name.endsWith('/'))
-    .map(f=>{
-      const meta = parseStoragePath(f.name);
-      const { data: pub } = supabase.storage.from(BUCKET).getPublicUrl(f.name);
-      return { path: f.name, name: meta.name, source: meta.source, author: meta.author, publicUrl: pub.publicUrl };
-    });
-  renderGallery();
 }
 
 // Dropzone (mariée)
@@ -470,13 +476,18 @@ function compressImage(file, maxDimension = 2000, quality = 0.82){
 async function handleFiles(fileList, source, author){
   const files = Array.from(fileList).filter(f=>f.type.startsWith('image/'));
   for(let file of files){
-    if(source === 'invite'){
-      file = await compressImage(file); // photos invités : compressées pour économiser l'espace
+    try{
+      if(source === 'invite'){
+        file = await compressImage(file); // photos invités : compressées pour économiser l'espace
+      }
+      // photos de la mariée : envoyées telles quelles, pleine qualité
+      const path = buildStoragePath(file, source, author);
+      const { error } = await supabase.storage.from(BUCKET).upload(path, file, { upsert:false });
+      if(error){ alert("Erreur d'envoi pour " + file.name + " : " + error.message); }
+    } catch(err){
+      alert("Erreur inattendue pour " + file.name + " : " + (err && err.message ? err.message : err));
+      console.error(err);
     }
-    // photos de la mariée : envoyées telles quelles, pleine qualité
-    const path = buildStoragePath(file, source, author);
-    const { error } = await supabase.storage.from(BUCKET).upload(path, file, { upsert:false });
-    if(error){ alert("Erreur d'envoi pour " + file.name + " : " + error.message); }
   }
   await loadPhotos();
 }
